@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+    <script>
+        // Check if the device is mobile
+        function isMobile() {
+            return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        }
+
+        // If it's a mobile device, show the unsupported message
+        if (isMobile()) {
+            window.addEventListener('DOMContentLoaded', (event) => {
+                document.body.innerHTML = '<div style="display: flex; justify-content: center; align-items: center; height: 100vh; text-align: center; font-family: Arial, sans-serif;"><h1>This website is only supported on desktop devices.</h1></div>';
+            });
+        }
+
+        AFRAME.registerComponent('rubiks-cube', {
+            init: function () {
+                this.cube = this.el;
+                this.faces = ['front', 'back', 'left', 'right', 'up', 'down'];
+                this.colors = ['#B90000', '#FF6D00', '#009B48', '#0045AD', '#FFD500', '#FFFFFF'];
+                this.state = this.createInitialState();
+                this.createCube();
+                this.addEventListeners();
+            },
+            createInitialState: function () {
+                let state = {};
+                for (let face of this.faces) {
+                    state[face] = Array(16).fill(this.colors[this.faces.indexOf(face)]);
+                }
+                return state;
+            },
+            createCube: function () {
+                for (let i = 0; i < 6; i++) {
+                    let face = document.createElement('a-entity');
+                    for (let x = 0; x < 4; x++) {
+                        for (let y = 0; y < 4; y++) {
+                            let cubelet = document.createElement('a-box');
+                            cubelet.setAttribute('width', '0.24');
+                            cubelet.setAttribute('height', '0.24');
+                            cubelet.setAttribute('depth', '0.24');
+                            cubelet.setAttribute('position', `${x*0.25 - 0.375} ${y*0.25 - 0.375} 0`);
+                            cubelet.setAttribute('material', {color: this.colors[i], metalness: 0.3, roughness: 0.8});
+                            cubelet.setAttribute('data-x', x);
+                            cubelet.setAttribute('data-y', y);
+                            face.appendChild(cubelet);
+                        }
+                    }
+                    face.setAttribute('position', this.getFacePosition(i));
+                    face.setAttribute('rotation', this.getFaceRotation(i));
+                    face.setAttribute('class', this.faces[i]);
+                    this.cube.appendChild(face);
+                }
+            },
+            getFacePosition: function (index) {
+                switch(index) {
+                    case 0: return '0 0 0.5';
+                    case 1: return '0 0 -0.5';
+                    case 2: return '-0.5 0 0';
+                    case 3: return '0.5 0 0';
+                    case 4: return '0 0.5 0';
+                    case 5: return '0 -0.5 0';
+                }
+            },
+            getFaceRotation: function (index) {
+                switch(index) {
+                    case 0: return '0 0 0';
+                    case 1: return '0 180 0';
+                    case 2: return '0 -90 0';
+                    case 3: return '0 90 0';
+                    case 4: return '-90 0 0';
+                    case 5: return '90 0 0';
+                }
+            },
+            addEventListeners: function () {
+                document.addEventListener('keydown', this.onKeyDown.bind(this));
+                document.addEventListener('mousemove', this.onMouseMove.bind(this));
+                document.addEventListener('mousedown', this.onMouseDown.bind(this));
+                document.addEventListener('mouseup', this.onMouseUp.bind(this));
+            },
+            onKeyDown: function (event) {
+                switch(event.key) {
+                    case 'q': this.rotateFace('front'); break;
+                    case 'w': this.rotateFace('back'); break;
+                    case 'a': this.rotateFace('left'); break;
+                    case 's': this.rotateFace('right'); break;
+                    case 'z': this.rotateFace('up'); break;
+                    case 'x': this.rotateFace('down'); break;
+                }
+            },
+            onMouseDown: function (event) {
+                this.isMouseDown = true;
+                this.lastMouseX = event.clientX;
+                this.lastMouseY = event.clientY;
+            },
+            onMouseUp: function (event) {
+                this.isMouseDown = false;
+            },
+            onMouseMove: function (event) {
+                if (!this.isMouseDown) return;
+                const deltaX = event.clientX - this.lastMouseX;
+                const deltaY = event.clientY - this.lastMouseY;
+                this.rotateCube(deltaY / 5, deltaX / 5, 0);
+                this.lastMouseX = event.clientX;
+                this.lastMouseY = event.clientY;
+            },
+            rotateCube: function (x, y, z) {
+                const currentRotation = this.cube.getAttribute('rotation');
+                const newRotation = {
+                    x: currentRotation.x + x,
+                    y: currentRotation.y + y,
+                    z: currentRotation.z + z
+                };
+                this.cube.setAttribute('rotation', newRotation);
+            },
+            rotateFace: function (face) {
+                let faceEl = this.cube.querySelector('.' + face);
+                let currentRotation = faceEl.getAttribute('rotation');
+                let newRotation = {
+                    x: currentRotation.x,
+                    y: currentRotation.y,
+                    z: (currentRotation.z + 90) % 360
+                };
+                faceEl.setAttribute('animation', {
+                    property: 'rotation',
+                    to: newRotation,
+                    dur: 500,
+                    easing: 'easeOutQuad'
+                });
+
+                this.state[face] = this.rotateFaceColors(this.state[face]);
+                this.updateAdjacentFaces(face);
+                this.updateCubeColors();
+            },
+            rotateFaceColors: function (faceColors) {
+                let newColors = [];
+                for (let i = 0; i < 4; i++) {
+                    for (let j = 0; j < 4; j++) {
+                        newColors[i * 4 + j] = faceColors[(3 - j) * 4 + i];
+                    }
+                }
+                return newColors;
+            },
+            updateAdjacentFaces: function (face) {
+                let adjacentFaces = {
+                    'front': ['up', 'right', 'down', 'left'],
+                    'back': ['up', 'left', 'down', 'right'],
+                    'left': ['up', 'front', 'down', 'back'],
+                    'right': ['up', 'back', 'down', 'front'],
+                    'up': ['back', 'right', 'front', 'left'],
+                    'down': ['front', 'right', 'back', 'left']
+                };
+
+                let adjacent = adjacentFaces[face];
+                let temp = [
+                    this.state[adjacent[0]][12], this.state[adjacent[0]][13], this.state[adjacent[0]][14], this.state[adjacent[0]][15]
+                ];
+
+                for (let i = 3; i > 0; i--) {
+                    for (let j = 0; j < 4; j++) {
+                        this.state[adjacent[i]][j * 4 + 3] = this.state[adjacent[i - 1]][j * 4 + 3];
+                    }
+                }
+
+                for (let j = 0; j < 4; j++) {
+                    this.state[adjacent[0]][j * 4 + 3] = temp[j];
+                }
+            },
+            updateCubeColors: function () {
+                for (let face of this.faces) {
+                    let faceEl = this.cube.querySelector('.' + face);
+                    let cubelets = faceEl.querySelectorAll('a-box');
+                    cubelets.forEach((cubelet, index) => {
+                        cubelet.setAttribute('material', {color: this.state[face][index], metalness: 0.3, roughness: 0.8});
+                    });
+                }
+            },
+            scramble: function () {
+                const moves = ['front', 'back', 'left', 'right', 'up', 'down'];
+                for (let i = 0; i < 20; i++) {
+                    let randomMove = moves[Math.floor(Math.random() * moves.length)];
+                    this.rotateFace(randomMove);
+                }
+            }
+        });
+    </script>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: Arial, sans-serif;
+        }
+        #instructions, #gameScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 999;
+        }
+        #gameScreen {
+            display: none;
+            background: none;
+            pointer-events: none;
+            justify-content: flex-start;
+            align-items: flex-end;
+        }
+        .buttons {
+            margin: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        #gameScreen .buttons {
+            align-items: flex-end;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 18px;
+            margin-top: 10px;
+            pointer-events: auto;
+        }
+        #helpPopup {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.9);
+            padding: 20px;
+            border-radius: 10px;
+            display: none;
+            z-index: 1000;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div id="instructions">
+        <h1>4x4 Rubik's Cube Instructions</h1>
+        <p>Use the following keys to rotate faces:</p>
+        <ul>
+            <li>Q - Front face</li>
+            <li>W - Back face</li>
+            <li>A - Left face</li>
+            <li>S - Right face</li>
+            <li>Z - Top face</li>
+            <li>X - Bottom face</li>
+        </ul>
+        <p>Click and drag to rotate the entire cube.</p>
+        <div class="buttons">
+            <button id="startButton">Start Game</button>
+            <button id="challengeButton">Challenge Yourself</button>
+        </div>
+    </div>
+
+    <div id="gameScreen">
+        <div class="buttons">
+            <button id="backToInstructions">Back to Instructions</button>
+            <button id="helpButton">Help</button>
+        </div>
+    </div>
+
+    <div id="helpPopup">
+        <h2>Controls:</h2>
+        <ul>
+            <li>Q - Front face</li>
+            <li>W - Back face</li>
+            <li>A - Left face</li>
+            <li>S - Right face</li>
+            <li>Z - Top face</li>
+            <li>X - Bottom face</li>
+        </ul>
+        <p>Click and drag to rotate the entire cube.</p>
+        <button id="closeHelp">Close</button>
+    </div>
+
+    <a-scene>
+        <a-entity id="rubiksCube" rubiks-cube position="0 0 -2" scale="1.5 1.5 1.5" rotation="0 0 0"></a-entity>
+        <a-sky color="#000000"></a-sky>
+        <a-light type="ambient" color="#888888"></a-light>
+        <a-light type="directional" position="1 1 1" color="#FFFFFF" intensity="0.5"></a-light>
+        <a-camera position="0 0 0" rotation="0 0 0" wasd-controls-enabled="false" look-controls-enabled="false"></a-camera>
+    </a-scene>
+
+    <script>
+        const instructions = document.getElementById('instructions');
+        const gameScreen = document.getElementById('gameScreen');
+        const helpPopup = document.getElementById('helpPopup');
+
+        document.getElementById('startButton').addEventListener('click', function() {
+            instructions.style.display = 'none';
+            gameScreen.style.display = 'flex';
+        });
+
+        document.getElementById('challengeButton').addEventListener('click', function() {
+            instructions.style.display = 'none';
+            gameScreen.style.display = 'flex';
+            document.querySelector('[rubiks-cube]').components['rubiks-cube'].scramble();
+        });
+
+        document.getElementById('backToInstructions').addEventListener('click', function() {
+            gameScreen.style.display = 'none';
+            instructions.style.display = 'flex';
+        });
+
+        document.getElementById('helpButton').addEventListener('click', function() {
+            helpPopup.style.display = 'block';
+        });
+
+        document.getElementById('closeHelp').addEventListener('click', function() {
+            helpPopup.style.display = 'none';
+        });
+    </script>
+</body>
+</html>
