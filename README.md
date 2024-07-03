@@ -15,7 +15,7 @@ Welcome to the Rubik's Cube Game! This is an interactive, web-based Rubik's Cube
 
 ## About
 
-This project is an open-source Rubik's Cube game that allows users to play and interact with a virtual Rubik's Cube. The cube is coded with JavaScript, HTML, and CSS, and it utilizes A-Frame for 3D rendering. The game is hosted on GitHub Pages at [cubegame.github.io](https://cubegame.github.io).
+This project is an open-source Rubik's Cube game that allows users to play and interact with a virtual Rubik's Cube. The cube is coded with JavaScript, HTML, and CSS, and it utilizes A-Frame for 3D rendering. The game is hosted on GitHub Pages at [http://kthamman.me/cubegame.github.io/](http://kthamman.me/cubegame.github.io/).
 
 ## Features
 
@@ -61,4 +61,4 @@ This project is licensed under the MIT License - see the LICENSE.md file for det
 ## Contact
 Kanishk Thamman - kanishk.thamman@pm.me
 
-Project Link: [cubegame.github.io](cubegame.github.io)
+Project Link: [http://kthamman.me/cubegame.github.io/](http://kthamman.me/cubegame.github.io/)
